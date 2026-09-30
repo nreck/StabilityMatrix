@@ -37,6 +37,7 @@ In the same settings section, configure:
 | SSH host | `servivor` |
 | Server library | `~/Applications/StabilityMatrix/Data` |
 | Existing ComfyUI directory | `~/ComfyUI` |
+| New model downloads | `/media/tt/storage/StabilityMatrix/Models` |
 
 SSH must authenticate without an interactive prompt. The app deploys its bundled
 Python helper to `~/.local/share/stabilitymatrix-remote/agent.py` automatically.
@@ -70,8 +71,39 @@ and uploads from the Mac. Downloads accept an optional bearer token and SHA-256
 checksum. Choose a destination root and relative model path; existing files are
 never overwritten. Related metadata and preview files move with the model.
 
-The upstream CivitAI/Hugging Face Model Browser still targets the Mac library.
-For remote model installation, use Checkpoint Manager's download/upload controls.
+Set **New model downloads on server** in Settings → Inference to an existing,
+writable directory. On servivor this is `/media/tt/storage/StabilityMatrix/Models`
+on the TT disk. Leave the setting blank to use the server library's Models folder.
+Checkpoint Manager lists both the download drive and existing model locations;
+the download drive is selected by default. Selecting an existing model does not
+change that download destination. Missing/inaccessible download drives cause an
+error instead of falling back to the server home directory or Mac.
+
+CivitAI and Hugging Face Model Browser downloads now run directly on the server
+while remote mode is enabled. Imports through the shared model importer (including
+CivArchive and OpenModelDB) use the same destination, retaining category/subfolder
+paths. Saved CivitAI/Hugging Face account tokens are sent over SSH only for the
+matching provider; redirects to another host discard the Authorization header.
+Browser downloads appear in Checkpoint Manager's server jobs, rather than the
+Mac download queue. Remote imports transfer model weights and companion configuration
+files listed by the Hugging Face catalog, without browser preview images or metadata
+sidecars. Browser installed badges do not
+index remote files; Checkpoint Manager is the remote inventory. Existing files
+remain in place and duplicate target names are refused.
+
+ComfyUI launched by the remote manager receives both the existing library and
+download drive in its model search paths. To expose the drive to an already-running
+ComfyUI and packages using the library's shared model folders, run:
+
+```sh
+ssh servivor 'python3 - /media/tt/storage/StabilityMatrix/Models' < Tools/remote/link-model-drive.py
+```
+
+This adds `RemoteDownloads` directory links inside existing model categories,
+without moving files or restarting processes. Existing conflicting paths are
+refused. These links are already configured on servivor. The running backend
+may need a model-list refresh before new files appear.
+
 Install custom nodes on the server; missing nodes are reported by ComfyUI when a
 workflow is submitted. Choose inference models reported by the connected backend;
 a newly added model may require a backend refresh or restart before it is available.
@@ -88,9 +120,10 @@ Helper state, logs, package records, and reversible trash are kept under
 Install a .NET 9 SDK and follow [the build guide](../CONTRIBUTING.md). For this fork:
 
 ```sh
-HUSKY=0 bash Build/build_macos_app.sh -v 2.16.0-remote.2 -- -restore \
-  -p:Version=2.16.0-remote.2 -p:CFBundleIdentifier=com.nreck.stabilitymatrix.remote
-python3 Tools/remote/install-macos-app.py --install
+HUSKY=0 bash Build/build_macos_app.sh -v 2.16.0-remote.3 -- -restore \
+  -p:Version=2.16.0-remote.3 -p:CFBundleIdentifier=com.nreck.stabilitymatrix.remote
+python3 Tools/remote/install-macos-app.py --install \
+  --remote-models-path /media/tt/storage/StabilityMatrix/Models
 ```
 
 Quit the remote app before installation. The installer signs the build locally,
@@ -105,6 +138,7 @@ will not contain these changes.
 ```sh
 python3 -m unittest discover -s Tools/remote -p 'test_*.py'
 python3 Tools/remote/smoke_remote_library.py servivor
+python3 Tools/remote/smoke_remote_library.py servivor --models-dir /media/tt/storage/StabilityMatrix/Models
 SM_TEST_REMOTE_SSH=servivor HUSKY=0 dotnet test StabilityMatrix.Tests -r osx-arm64 -c Release \
   --filter FullyQualifiedName~RemoteLibraryTransportTests
 HUSKY=0 dotnet test StabilityMatrix.UITests -r osx-arm64 -c Release \

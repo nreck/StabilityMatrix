@@ -2,6 +2,7 @@
 """Stage/install the remote Mac build with a dedicated data directory and an ad-hoc signature."""
 import argparse
 from datetime import datetime
+import json
 from pathlib import Path
 import plistlib
 import shutil
@@ -12,6 +13,7 @@ import tempfile
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--install", action="store_true", help="Install into /Applications after the app is closed")
+    parser.add_argument("--remote-models-path", help="Set the server model download directory when installing")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[2]
     source = repo / "out/osx-arm64/Stability Matrix.app"
@@ -43,6 +45,15 @@ def main():
             shutil.move(str(target), str(backup / target.name))
         shutil.move(str(stage), str(target))
         stage_root.rmdir()
+        if args.remote_models_path:
+            settings_path = Path.home() / "Documents/StabilityMatrix-Remote-Data/settings.json"
+            settings = json.loads(settings_path.read_text())
+            shutil.copy2(settings_path, settings_path.with_name("settings.before-model-drive.json"))
+            settings["RemoteModelsPath"] = args.remote_models_path
+            temporary = settings_path.with_suffix(".json.tmp")
+            temporary.write_text(json.dumps(settings, indent=2))
+            temporary.chmod(0o600)
+            temporary.replace(settings_path)
         print("Installed:", target)
     else:
         print("Staged:", stage)

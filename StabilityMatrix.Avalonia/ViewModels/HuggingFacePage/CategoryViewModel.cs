@@ -29,7 +29,7 @@ public partial class CategoryViewModel : ViewModelBase
     [ObservableProperty]
     private int numSelected;
 
-    public CategoryViewModel(IEnumerable<HuggingfaceItem> items, string modelsDir)
+    public CategoryViewModel(IEnumerable<HuggingfaceItem> items, string? modelsDir)
     {
         ItemsCache
             .Connect()

@@ -143,6 +143,7 @@ public sealed class RemoteLibraryService(ISettingsManager settingsManager) : IDi
         await EnsureAgentAsync(host, timeout.Token);
         request["library"] = settingsManager.Settings.RemoteLibraryPath;
         request["comfy"] = settingsManager.Settings.RemoteComfyPath;
+        request["models"] = settingsManager.Settings.RemoteModelsPath;
         var json = await RunSshAsync(host, "python3 ~/.local/share/stabilitymatrix-remote/agent.py",
             JsonSerializer.Serialize(request), file, timeout.Token);
         using var response = JsonDocument.Parse(json);
@@ -157,7 +158,7 @@ public sealed record RemotePackage(string Id, string Name, string Kind, string P
 public sealed record RemoteModel(string Root, string Path, string Name, string Category, long Size)
 {
     public string SizeDisplay => $"{Size / 1073741824d:N2} GB";
-    public string Location => Root == "library" ? "Stability Matrix" : Root == "comfy" ? "Inference ComfyUI" : "Shared ComfyUI";
+    public string Location => Root == "downloads" ? "Download drive" : Root == "library" ? "Stability Matrix" : Root == "comfy" ? "Inference ComfyUI" : "Shared ComfyUI";
 }
 public sealed record RemoteChoice(string Id, string Name, string? Path = null);
 public sealed record RemoteJob(string Id, string Description, string Status, string Message);

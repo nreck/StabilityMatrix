@@ -28,6 +28,7 @@ public partial class RemoteLibraryViewModel : PageViewModelBase
     [ObservableProperty] private string status = "Refresh to load the server library.";
     [ObservableProperty] private string serverLabel = "Remote server";
     [ObservableProperty] private string freeSpace = "";
+    [ObservableProperty] private string downloadLocation = "";
     [ObservableProperty] private string search = "";
     [ObservableProperty] private RemotePackage? selectedPackage;
     [ObservableProperty] private RemoteModel? selectedModel;
@@ -73,12 +74,7 @@ public partial class RemoteLibraryViewModel : PageViewModelBase
     {
         if (value is not null) InstallName = value.Name + " Remote";
     }
-    partial void OnSelectedModelChanged(RemoteModel? value)
-    {
-        if (value is null) return;
-        SelectedRoot = Roots.FirstOrDefault(r => r.Id == value.Root);
-        ModelDestination = value.Path;
-    }
+    partial void OnSelectedRootChanged(RemoteChoice? value) => DownloadLocation = value?.Path ?? "";
 
     public override async Task OnLoadedAsync()
     {
@@ -115,7 +111,7 @@ public partial class RemoteLibraryViewModel : PageViewModelBase
         SelectedPackage = Packages.FirstOrDefault(p => p.Id == packageId);
         SelectedModel = Models.FirstOrDefault(p => p.Root + ":" + p.Path == modelKey);
         SelectedCatalog = Catalog.FirstOrDefault(p => p.Id == catalogId) ?? Catalog.FirstOrDefault();
-        SelectedRoot = Roots.FirstOrDefault(p => p.Id == rootId) ?? Roots.FirstOrDefault();
+        SelectedRoot = Roots.FirstOrDefault(p => p.Id == rootId) ?? Roots.FirstOrDefault(p => p.Id == "downloads") ?? Roots.FirstOrDefault();
         SelectedJob = Jobs.FirstOrDefault(p => p.Id == jobId);
         OnPropertyChanged(nameof(FilteredModels));
         ServerLabel = $"{settings.Settings.RemoteSshHost} · {data.Library}";

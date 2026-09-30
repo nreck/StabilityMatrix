@@ -55,13 +55,17 @@ public partial class CivitFileViewModel : DisposableViewModelBase
         CivitFile = civitFile;
         // Hash-based only, so files with types we don't recognize (Unknown) still show as installed
         IsInstalled =
-            CivitFile is { Hashes.BLAKE3: not null }
+            !settingsManager.Settings.UseRemoteInference && CivitFile is { Hashes.BLAKE3: not null }
             && modelIndexService.ModelIndexBlake3Hashes.Contains(CivitFile.Hashes.BLAKE3);
         EventManager.Instance.ModelIndexChanged += ModelIndexChanged;
 
         try
         {
-            if (settingsManager.IsLibraryDirSet)
+            if (settingsManager.Settings.UseRemoteInference)
+            {
+                DownloadTooltip = $"Download on {settingsManager.Settings.RemoteSshHost}; destination is set in Settings → Inference";
+            }
+            else if (settingsManager.IsLibraryDirSet)
             {
                 var fileSizeBytes = CivitFile.SizeKb * 1024;
                 var freeSizeBytes =
@@ -96,7 +100,7 @@ public partial class CivitFileViewModel : DisposableViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             IsInstalled =
-                CivitFile is { Hashes.BLAKE3: not null }
+                !settingsManager.Settings.UseRemoteInference && CivitFile is { Hashes.BLAKE3: not null }
                 && modelIndexService.ModelIndexBlake3Hashes.Contains(CivitFile.Hashes.BLAKE3);
         });
     }

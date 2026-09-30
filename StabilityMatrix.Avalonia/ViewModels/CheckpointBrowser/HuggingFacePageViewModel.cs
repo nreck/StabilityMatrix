@@ -37,6 +37,7 @@ public partial class HuggingFacePageViewModel : TabViewModelBase
     private readonly ITrackedDownloadService trackedDownloadService;
     private readonly ISettingsManager settingsManager;
     private readonly INotificationService notificationService;
+    private readonly IRemoteModelDownloadService remoteDownloads;
 
     public SourceCache<HuggingfaceItem, string> ItemsCache { get; } =
         new(i => i.RepositoryPath + i.ModelName);
@@ -63,12 +64,14 @@ public partial class HuggingFacePageViewModel : TabViewModelBase
     public HuggingFacePageViewModel(
         ITrackedDownloadService trackedDownloadService,
         ISettingsManager settingsManager,
-        INotificationService notificationService
+        INotificationService notificationService,
+        IRemoteModelDownloadService remoteDownloads
     )
     {
         this.trackedDownloadService = trackedDownloadService;
         this.settingsManager = settingsManager;
         this.notificationService = notificationService;
+        this.remoteDownloads = remoteDownloads;
 
         ItemsCache
             .Connect()
@@ -78,7 +81,7 @@ public partial class HuggingFacePageViewModel : TabViewModelBase
                 g =>
                     new CategoryViewModel(
                         g.Cache.Items,
-                        Design.IsDesignMode ? string.Empty : settingsManager.ModelsDirectory
+                        Design.IsDesignMode || settingsManager.Settings.UseRemoteInference ? null : settingsManager.ModelsDirectory
                     )
                     {
                         Title = g.Key.GetDescription() ?? g.Key.ToString()
@@ -174,6 +177,13 @@ public partial class HuggingFacePageViewModel : TabViewModelBase
                     )
                 );
 
+                if (remoteDownloads.IsEnabled)
+                {
+                    await remoteDownloads.QueueAsync([new Uri(url)],
+                        remoteDownloads.RelativePath(downloadPath.Directory!.FullPath, fileName));
+                    continue;
+                }
+
                 downloadPath.Directory?.Create();
                 var download = trackedDownloadService.NewDownload(url, downloadPath);
                 download.ProgressUpdate += DownloadOnProgressUpdate;
@@ -191,7 +201,7 @@ public partial class HuggingFacePageViewModel : TabViewModelBase
 
             viewModel.IsSelected = false;
         }
-        progressTimer.Start();
+        if (!remoteDownloads.IsEnabled) progressTimer.Start();
     }
 
     private void DownloadOnProgressUpdate(object? sender, ProgressReport e)

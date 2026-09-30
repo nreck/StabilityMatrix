@@ -47,6 +47,7 @@ public partial class InferenceSettingsViewModel : PageViewModelBase
     [ObservableProperty] private string remoteSshHost = "servivor";
     [ObservableProperty] private string remoteLibraryPath = "~/Applications/StabilityMatrix/Data";
     [ObservableProperty] private string remoteComfyPath = "~/ComfyUI";
+    [ObservableProperty] private string remoteModelsPath = "";
 
     [ObservableProperty]
     private bool useRemoteInference;
@@ -126,6 +127,7 @@ public partial class InferenceSettingsViewModel : PageViewModelBase
         settingsManager.RelayPropertyFor(this, vm => vm.RemoteSshHost, s => s.RemoteSshHost, true);
         settingsManager.RelayPropertyFor(this, vm => vm.RemoteLibraryPath, s => s.RemoteLibraryPath, true);
         settingsManager.RelayPropertyFor(this, vm => vm.RemoteComfyPath, s => s.RemoteComfyPath, true);
+        settingsManager.RelayPropertyFor(this, vm => vm.RemoteModelsPath, s => s.RemoteModelsPath, true);
         settingsManager.RelayPropertyFor(
             this, vm => vm.UseRemoteInference, settings => settings.UseRemoteInference, true
         );

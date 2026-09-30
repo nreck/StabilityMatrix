@@ -19,12 +19,15 @@ public class RemoteLibraryTransportTests
             return;
         }
         var settings = Substitute.For<ISettingsManager>();
-        settings.Settings.Returns(new Settings { RemoteSshHost = host });
+        var modelsPath = Environment.GetEnvironmentVariable("SM_TEST_REMOTE_MODELS") ?? "";
+        settings.Settings.Returns(new Settings { RemoteSshHost = host, RemoteModelsPath = modelsPath });
         using var service = new RemoteLibraryService(settings);
         var inventory = await service.RequestAsync<RemoteInventory>(new() { ["action"] = "inventory" });
         Assert.IsTrue(inventory.Packages.Count > 0);
         Assert.IsTrue(inventory.Models.Count > 0);
         Assert.IsTrue(inventory.Roots.Any(r => r.Id == "library"));
+        if (!string.IsNullOrEmpty(modelsPath))
+            Assert.AreEqual(modelsPath, inventory.Roots.First(r => r.Id == "downloads").Path);
         var address = await service.ForwardPortAsync(8188);
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
         var response = await http.GetStringAsync(new Uri(address, "/system_stats"));

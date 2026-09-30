@@ -15,10 +15,12 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+import urllib.error
 import uuid
 
 STATE = Path.home() / ".local/share/stabilitymatrix-remote"
 WEIGHTS = {".safetensors", ".ckpt", ".pt", ".pth", ".bin", ".gguf", ".onnx"}
+DOWNLOAD_FILES = WEIGHTS | {".json", ".yaml", ".yml", ".txt", ".model"}
 CATALOG = {
     "ComfyUI": {"name": "ComfyUI", "repo": "https://github.com/comfyanonymous/ComfyUI.git", "branch": "master", "entry": "main.py", "python": "3.12"},
     "stable-diffusion-webui": {"name": "AUTOMATIC1111", "repo": "https://github.com/AUTOMATIC1111/stable-diffusion-webui.git", "branch": "dev", "entry": "launch.py", "python": "3.10"},
@@ -66,7 +68,13 @@ def library(request):
 
 
 def roots(request):
-    result = {"library": library(request) / "Models"}
+    result = {}
+    if request.get("models"):
+        download_root = Path(request["models"]).expanduser().resolve()
+        if not download_root.is_dir():
+            raise ValueError("Model download directory is unavailable; check the drive mount and access: " + str(download_root))
+        result["downloads"] = download_root
+    result["library"] = library(request) / "Models"
     comfy = Path(request.get("comfy") or "~/ComfyUI").expanduser().resolve()
     if (comfy / "main.py").is_file() and (comfy / "models").is_dir():
         result["comfy"] = comfy / "models"
@@ -90,12 +98,13 @@ def safe_child(root, relative, require_exists=False):
     return path
 
 
-def model_path(request, key="path", exists=False):
-    root = roots(request).get(request.get("root", "library"))
+def model_path(request, key="path", exists=False, extensions=None):
+    locations = roots(request)
+    root = locations.get(request.get("root") or ("downloads" if "downloads" in locations else "library"))
     if root is None:
         raise ValueError("Unknown model location")
     path = safe_child(root, request[key], exists)
-    if path.suffix.lower() not in WEIGHTS or path.is_dir():
+    if path.suffix.lower() not in (extensions or WEIGHTS) or path.is_dir():
         raise ValueError("Select a model file, not a directory or metadata file")
     return path
 
@@ -214,8 +223,8 @@ def inventory(request):
     return {"host": socket.gethostname(), "library": str(library(request)), "packages": public,
             "models": models(request), "jobs": [job_summary(p) for p in jobs],
             "catalog": [{"id": k, "name": v["name"]} for k, v in CATALOG.items()],
-            "roots": [{"id": k, "name": "Stability Matrix library" if k == "library" else "Inference ComfyUI" if k == "comfy" else "Shared ComfyUI", "path": str(v)} for k, v in roots(request).items()],
-            "freeBytes": shutil.disk_usage(library(request)).free}
+            "roots": [{"id": k, "name": "Model download drive" if k == "downloads" else "Stability Matrix library" if k == "library" else "Inference ComfyUI" if k == "comfy" else "Shared ComfyUI", "path": str(v)} for k, v in roots(request).items()],
+            "freeBytes": shutil.disk_usage(next(iter(roots(request).values()))).free}
 
 
 def run_command(args, cwd):
@@ -241,8 +250,12 @@ def shared_paths(package, request):
                "embeddings": "Embeddings"}
     # Keep any user-owned extra_model_paths.yaml untouched; pass this separate file at launch.
     file = Path(package["path"]) / "stability_matrix_remote_paths.yaml"
-    root = library(request) / "Models"
-    text = "stability_matrix_remote:\n" + "".join(f"  {key}: {json.dumps(str(root / value))}\n" for key, value in mapping.items())
+    model_roots = [library(request) / "Models"]
+    if "downloads" in roots(request):
+        model_roots.append(roots(request)["downloads"])
+    text = ""
+    for index, root in enumerate(model_roots):
+        text += f"stability_matrix_remote_{index}:\n" + "".join(f"  {key}: {json.dumps(str(root / value))}\n" for key, value in mapping.items())
     file.write_text(text)
     return file
 
@@ -431,9 +444,7 @@ def restore_model(request):
 
 
 def save_stream(request, stream, expected_size=None):
-    target = model_path(request)
-    if target.suffix.lower() not in WEIGHTS:
-        raise ValueError("Choose a model filename (.safetensors, .gguf, .ckpt, .pt, .pth, .bin or .onnx)")
+    target = model_path(request, extensions=DOWNLOAD_FILES)
     if target.exists() or target.is_symlink():
         raise FileExistsError("Destination exists; downloads/uploads never overwrite models")
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -464,7 +475,27 @@ def save_stream(request, stream, expected_size=None):
     return f"Saved {target.name} ({total} bytes)"
 
 
+class SafeDownloadRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        redirected = super().redirect_request(request, fp, code, msg, headers, newurl)
+        old = urllib.parse.urlsplit(request.full_url)
+        new = urllib.parse.urlsplit(newurl)
+        if redirected is not None and (old.scheme, old.netloc) != (new.scheme, new.netloc):
+            redirected.remove_header("Authorization")
+        return redirected
+
+
 def download_model(request):
+    sources = request.get("sources")
+    if sources:
+        # Each mirror has its own credentials; never forward a source's token to another mirror.
+        for index, source in enumerate(sources):
+            try:
+                return download_model({**{k: v for k, v in request.items() if k != "sources"}, **source})
+            except (urllib.error.URLError, ValueError) as error:
+                if index == len(sources) - 1:
+                    raise
+                print("Download source failed; trying next mirror", flush=True)
     url = request.get("url", "")
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username:
@@ -472,7 +503,7 @@ def download_model(request):
     headers = {"User-Agent": "StabilityMatrixRemote/1"}
     if request.get("token"):
         headers["Authorization"] = "Bearer " + request["token"]
-    with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=60) as response:
+    with urllib.request.build_opener(SafeDownloadRedirect()).open(urllib.request.Request(url, headers=headers), timeout=60) as response:
         if "text/html" in response.headers.get("Content-Type", ""):
             raise ValueError("URL returned a web page; use a direct model file URL")
         size = response.headers.get("Content-Length")
@@ -488,6 +519,10 @@ def start_job(request):
     if request.get("operation") not in OPERATIONS:
         raise ValueError("Unknown job operation")
     library(request)
+    if request.get("operation") == "download":
+        target = model_path(request, extensions=DOWNLOAD_FILES)
+        if target.exists() or target.is_symlink():
+            raise FileExistsError("Destination exists; downloads never overwrite models")
     identifier = uuid.uuid4().hex
     path = STATE / "jobs" / (identifier + ".json")
     job = {"id": identifier, "description": request["operation"] + ": " + request.get("name", request.get("path", request.get("packageId", "model"))),

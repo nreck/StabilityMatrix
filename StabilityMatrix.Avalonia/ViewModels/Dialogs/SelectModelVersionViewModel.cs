@@ -138,7 +138,12 @@ public partial class SelectModelVersionViewModel(
         if (value is { IsInstalled: true }) { }
 
         var canImport = true;
-        if (settingsManager.IsLibraryDirSet)
+        if (settingsManager.Settings.UseRemoteInference)
+        {
+            LoadInstallLocations();
+            ImportTooltip = $"Download on {settingsManager.Settings.RemoteSshHost}; destination is set in Settings → Inference";
+        }
+        else if (settingsManager.IsLibraryDirSet)
         {
             LoadInstallLocations();
 

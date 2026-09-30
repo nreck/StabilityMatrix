@@ -46,6 +46,9 @@
                 <TextBox Text="{Binding RemoteSshHost}" Watermark="SSH host, e.g. servivor"/>
                 <TextBox Text="{Binding RemoteLibraryPath}" Watermark="Stability Matrix data directory on server"/>
                 <TextBox Text="{Binding RemoteComfyPath}" Watermark="Separate inference ComfyUI directory on server"/>
+                <TextBlock Text="New model downloads on server" FontWeight="Medium"/>
+                <TextBox Text="{Binding RemoteModelsPath}" Watermark="Model directory on server (blank uses the server library)"/>
+                <TextBlock Text="Model Browser downloads go directly to this folder while remote mode is enabled. Existing models stay in their current locations." TextWrapping="Wrap"/>
             </StackPanel>
 
             <!--  Prompt  -->

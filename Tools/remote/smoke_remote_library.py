@@ -11,7 +11,9 @@ import uuid
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("host")
-    host = parser.parse_args().host
+    parser.add_argument("--models-dir", help="Test transfers in a unique temporary directory on this server drive")
+    options = parser.parse_args()
+    host = options.host
     if not host or host.startswith("-") or any(c.isspace() for c in host):
         parser.error("Use an SSH host alias")
     identifier = "smoke-" + uuid.uuid4().hex
@@ -40,6 +42,13 @@ print(json.dumps({'root':str(root),'port':port}))
 '''
     fixture = json.loads(subprocess.check_output(ssh + ["python3 - " + identifier], input=setup.encode()))
     base = {"library": fixture["root"], "comfy": fixture["root"] + "/absent"}
+    drive_fixture = None
+    if options.models_dir:
+        import shlex
+        program = "import pathlib,sys; p=pathlib.Path(sys.argv[1]).expanduser(); assert p.is_dir(); d=p/sys.argv[2]; d.mkdir(); print(d)"
+        drive_fixture = subprocess.check_output(ssh + ["python3 -c " + shlex.quote(program) + " " + shlex.quote(options.models_dir) + " " + identifier], text=True).strip()
+        base["models"] = drive_fixture
+    transfer_root = "downloads" if drive_fixture else "library"
     jobs = []
     started = False
 
@@ -67,20 +76,25 @@ print(json.dumps({'root':str(root),'port':port}))
 
     try:
         payload = b"stability-matrix-upload-fixture"
-        request({"action": "upload", "root": "library", "path": "StableDiffusion/test.bin", "size": len(payload)}, payload)
-        job("move", root="library", path="StableDiffusion/test.bin", destination="StableDiffusion/moved.bin")
-        job("trash", root="library", path="StableDiffusion/moved.bin")
+        request({"action": "upload", "root": transfer_root, "path": "StableDiffusion/test.bin", "size": len(payload)}, payload)
+        job("move", root=transfer_root, path="StableDiffusion/test.bin", destination="StableDiffusion/moved.bin")
+        job("trash", root=transfer_root, path="StableDiffusion/moved.bin")
         job("restore")
         inventory = request({"action": "inventory"})
         assert any(m["path"] == "StableDiffusion/moved.bin" and m["size"] == len(payload) for m in inventory["models"])
         job("start", packageId=identifier, port=fixture["port"])
         started = True
-        job("download", root="library", path="StableDiffusion/download.bin", url=f"http://127.0.0.1:{fixture['port']}/model.bin")
+        job("download", path="StableDiffusion/download.bin", sources=[{"url": f"http://127.0.0.1:{fixture['port']}/model.bin"}])
         job("stop", packageId=identifier)
         started = False
         inventory = request({"action": "inventory"})
         assert not next(p for p in inventory["packages"] if p["id"] == identifier)["running"]
         assert any(m["path"] == "StableDiffusion/download.bin" and m["size"] > 0 for m in inventory["models"])
+        if drive_fixture:
+            for relative in ("StableDiffusion/moved.bin", "StableDiffusion/download.bin"):
+                assert any(m["root"] == "downloads" and m["path"] == relative for m in inventory["models"])
+            assert not any(m["root"] == "library" for m in inventory["models"])
+            print("Verified download/upload destination:", drive_fixture)
         print("PASS: SSH upload, move, trash, restore, detached launch, background HTTP download and graceful stop")
     finally:
         if started:
@@ -101,11 +115,15 @@ with (state/'mutation.lock').open('a') as lock:
   if json.loads(manifest.read_text()).get('library') == str(root): shutil.rmtree(manifest.parent)
  (state/('package-'+request['id']+'.log')).unlink(missing_ok=True)
  shutil.rmtree(root)
+ if request.get('drive'):
+  drive=pathlib.Path(request['drive'])
+  assert drive.name == request['id'] and drive.is_dir() and not drive.is_symlink()
+  shutil.rmtree(drive)
 '''
         # Pass the fixed cleanup program as a quoted command; identifiers stay on stdin.
         import shlex
         subprocess.run(ssh + ["python3 -c " + shlex.quote(cleanup)],
-                       input=json.dumps({"root": fixture["root"], "id": identifier, "jobs": jobs}).encode(), check=True)
+                       input=json.dumps({"root": fixture["root"], "id": identifier, "jobs": jobs, "drive": drive_fixture}).encode(), check=True)
 
 
 if __name__ == "__main__":

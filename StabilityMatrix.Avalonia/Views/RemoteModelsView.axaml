@@ -33,6 +33,7 @@
     <ComboBox ItemsSource="{Binding Roots}" SelectedItem="{Binding SelectedRoot}" HorizontalAlignment="Stretch">
      <ComboBox.ItemTemplate><DataTemplate x:DataType="remote:RemoteChoice"><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
     </ComboBox>
+    <TextBlock Text="{Binding DownloadLocation}" TextWrapping="Wrap" Opacity="0.7"/>
     <TextBox Text="{Binding ModelDestination}" Watermark="Destination, e.g. StableDiffusion/model.safetensors"/>
     <TextBox Text="{Binding ModelUrl}" Watermark="Direct model download URL (Hugging Face, CivitAI, etc.)"/>
     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">

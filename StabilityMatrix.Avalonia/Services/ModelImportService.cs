@@ -16,7 +16,8 @@ namespace StabilityMatrix.Avalonia.Services;
 public class ModelImportService(
     IDownloadService downloadService,
     INotificationService notificationService,
-    ITrackedDownloadService trackedDownloadService
+    ITrackedDownloadService trackedDownloadService,
+    IRemoteModelDownloadService? remoteDownloads = null
 ) : IModelImportService
 {
     public static async Task<FilePath> SaveCmInfo(
@@ -147,9 +148,6 @@ public class ModelImportService(
             }
         }
 
-        // Folders might be missing if user didn't install any packages yet
-        downloadFolder.Create();
-
         var originalFileName =
             fileNameOverride == null
                 ? modelFile.Name
@@ -158,6 +156,16 @@ public class ModelImportService(
         // Fix invalid chars in FileName
         originalFileName = Path.GetInvalidFileNameChars()
             .Aggregate(originalFileName, (current, c) => current.Replace(c, '_'));
+
+        if (remoteDownloads?.IsEnabled == true)
+        {
+            await remoteDownloads.QueueAsync([new Uri(modelFile.GetFileSpecificDownloadUrl())],
+                remoteDownloads.RelativePath(downloadFolder.FullPath, originalFileName), modelFile.Hashes.SHA256);
+            return;
+        }
+
+        // Folders might be missing if user didn't install any packages yet
+        downloadFolder.Create();
 
         // Generate unique file name if it already exists
         var uniqueFileName = GenerateUniqueFileName(downloadFolder.ToString(), originalFileName);
@@ -300,6 +308,13 @@ public class ModelImportService(
             downloadFolder = new DirectoryPath(
                 [downloadFolder.FullPath, .. pathSegments.Take(pathSegments.Length - 1)]
             );
+        }
+
+        if (remoteDownloads?.IsEnabled == true)
+        {
+            await remoteDownloads.QueueAsync(modelUris,
+                remoteDownloads.RelativePath(downloadFolder.FullPath, modelFileName));
+            return;
         }
 
         // Folders might be missing if user didn't install any packages yet

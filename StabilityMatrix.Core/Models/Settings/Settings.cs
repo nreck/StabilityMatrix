@@ -14,6 +14,7 @@ public class Settings
     public string RemoteSshHost { get; set; } = "servivor";
     public string RemoteLibraryPath { get; set; } = "~/Applications/StabilityMatrix/Data";
     public string RemoteComfyPath { get; set; } = "~/ComfyUI";
+    public string RemoteModelsPath { get; set; } = "";
 
     public bool UseRemoteInference { get; set; }
     public string RemoteInferenceUrl { get; set; } = "http://127.0.0.1:18188";

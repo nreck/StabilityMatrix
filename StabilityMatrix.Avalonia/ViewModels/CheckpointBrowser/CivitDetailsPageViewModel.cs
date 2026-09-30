@@ -417,6 +417,15 @@ public partial class CivitDetailsPageViewModel(
             return;
         }
 
+        if (settingsManager.Settings.UseRemoteInference)
+        {
+            var category = GetSharedFolderPath(settingsManager.ModelsDirectory, viewModel.CivitFile.Type,
+                CivitModel.Type, CivitModel.BaseModelType, viewModel.CivitFile.Name);
+            await modelImportService.DoImport(CivitModel, category, SelectedVersion?.ModelVersion,
+                viewModel.CivitFile, ParseFileNameFormat(CivitModel, SelectedVersion?.ModelVersion, viewModel.CivitFile));
+            return;
+        }
+
         DirectoryPath? finalDestinationDir = null;
         var effectiveLocationKeyForPreference = string.Empty;
 

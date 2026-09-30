@@ -781,6 +781,7 @@ public partial class CivArchiveDetailsPageViewModel(
             }
         );
 
+        if (settingsManager.Settings.UseRemoteInference) return;
         var finalPath = destinationDir.JoinFile(fileName);
         var sourceText = string.IsNullOrEmpty(sourceLabel) ? string.Empty : $" from {sourceLabel}";
         notificationService.Show(

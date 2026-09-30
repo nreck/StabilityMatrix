@@ -150,6 +150,48 @@ class RemoteLibraryTests(unittest.TestCase):
                 agent.dispatch({"action": "cancel", "jobId": identifier})
             kill.assert_not_called()
 
+    def test_new_download_root_keeps_existing_models_and_receives_transfers(self):
+        old = self.model()
+        drive = self.root / "tt/Models"
+        drive.mkdir(parents=True)
+        request = dict(self.request, models=str(drive))
+        request.pop("root")
+        agent.save_stream(request, io.BytesIO(b"new-drive-model"), 15)
+        self.assertEqual((drive / request["path"]).read_bytes(), b"new-drive-model")
+        self.assertEqual(old.read_bytes(), b"test-model-data")
+        inventory = agent.inventory(request)
+        self.assertEqual(inventory["roots"][0]["id"], "downloads")
+        self.assertEqual({model["root"] for model in inventory["models"]}, {"downloads", "library"})
+
+    def test_missing_download_drive_never_falls_back_to_home(self):
+        request = dict(self.request, models=str(self.root / "unmounted/Models"))
+        request.pop("root")
+        with self.assertRaisesRegex(ValueError, "directory is unavailable"):
+            agent.save_stream(request, io.BytesIO(b"model"), 5)
+        self.assertFalse((self.models / request["path"]).exists())
+        self.assertFalse((self.root / "unmounted").exists())
+
+    def test_model_configuration_files_transfer_but_executables_are_rejected(self):
+        for name in ("config.json", "model.yaml"):
+            agent.save_stream(dict(self.request, path="TextEncoders/example/" + name), io.BytesIO(b"{}"), 2)
+            self.assertTrue((self.models / "TextEncoders/example" / name).is_file())
+        with self.assertRaises(ValueError):
+            agent.save_stream(dict(self.request, path="TextEncoders/example/run.py"), io.BytesIO(b"print(1)"), 8)
+
+    def test_comfy_configuration_includes_existing_and_download_models(self):
+        drive = self.root / "tt/Models"
+        drive.mkdir(parents=True)
+        package = self.root / "comfy"
+        package.mkdir()
+        result = agent.shared_paths({"kind": "ComfyUI", "path": str(package)}, dict(self.request, models=str(drive)))
+        self.assertIn(str(drive / "StableDiffusion"), result.read_text())
+        self.assertIn(str(self.models / "StableDiffusion"), result.read_text())
+
+    def test_redirect_never_sends_account_token_to_other_host(self):
+        request = agent.urllib.request.Request("https://civitai.com/file", headers={"Authorization": "Bearer secret"})
+        redirected = agent.SafeDownloadRedirect().redirect_request(request, None, 302, "Found", {}, "https://cdn.example/file")
+        self.assertFalse(redirected.has_header("Authorization"))
+
     def test_cancelled_worker_removes_credentials_and_partial_download(self):
         identifier = "b" * 32
         request = dict(self.request, operation="download", token="secret")
