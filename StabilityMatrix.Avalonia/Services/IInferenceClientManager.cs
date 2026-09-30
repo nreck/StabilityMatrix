@@ -12,6 +12,8 @@ namespace StabilityMatrix.Avalonia.Services;
 
 public interface IInferenceClientManager : IDisposable, INotifyPropertyChanged, INotifyPropertyChanging
 {
+    Task ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default);
+
     ComfyClient? Client { get; set; }
 
     /// <summary>

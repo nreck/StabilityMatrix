@@ -216,7 +216,8 @@
     </ItemGroup>
     
     <ItemGroup>
-      <EmbeddedResource Update="Languages\Resources.resx">
+      <EmbeddedResource Include="Assets/remote_library_agent.py" />
+        <EmbeddedResource Update="Languages\Resources.resx">
         <Generator>PublicResXFileCodeGenerator</Generator>
         <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       </EmbeddedResource>

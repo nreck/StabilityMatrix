@@ -1,6 +1,6 @@
-> **Remote generation fork:** Keep the Mac app and generate on a remote ComfyUI server over SSH.
+> **Remote management fork:** Keep the Mac app, generate on a remote ComfyUI server, and manage its packages and models over SSH.
 > See [setup, build, and verification instructions](docs/remote-inference.md).
-> Packages and model installation remain local; remote models are managed on the server.
+> With remote mode enabled, Packages and Checkpoint Manager display the server's library.
 
 # Stability Matrix
 

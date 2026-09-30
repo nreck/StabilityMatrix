@@ -11,6 +11,7 @@
     xmlns:docs="clr-namespace:StabilityMatrix.Core.Models.Documentation;assembly=StabilityMatrix.Core"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia.BreadcrumbBar"
+    xmlns:views="clr-namespace:StabilityMatrix.Avalonia.Views"
     xmlns:viewModels="clr-namespace:StabilityMatrix.Avalonia.ViewModels"
     d:DataContext="{x:Static designData:DesignData.PackageManagerViewModel}"
     d:DesignHeight="450"
@@ -29,7 +30,9 @@
         <!--  ReSharper restore Xaml.RedundantResource  -->
     </controls:UserControlBase.Resources>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid>
+    <views:RemotePackagesView DataContext="{Binding RemoteLibrary}" IsVisible="{Binding IsEnabled}"/>
+    <Grid IsVisible="{Binding !RemoteLibrary.IsEnabled}" RowDefinitions="Auto,*">
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
             <ui:BreadcrumbBar
                 x:Name="BreadcrumbBar"
@@ -56,5 +59,6 @@
                 <avalonia:ViewLocator />
             </controls1:Frame.NavigationPageFactory>
         </controls1:Frame>
+    </Grid>
     </Grid>
 </controls:UserControlBase>

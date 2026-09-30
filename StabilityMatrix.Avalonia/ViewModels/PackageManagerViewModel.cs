@@ -32,8 +32,11 @@ public partial class PackageManagerViewModel : PageViewModelBase
     [ObservableProperty]
     private PageViewModelBase? currentPage;
 
-    public PackageManagerViewModel(IServiceManager<ViewModelBase> vmFactory)
+    public RemoteLibraryViewModel RemoteLibrary { get; }
+
+    public PackageManagerViewModel(IServiceManager<ViewModelBase> vmFactory, RemoteLibraryViewModel remoteLibrary)
     {
+        RemoteLibrary = remoteLibrary;
         SubPages = new PageViewModelBase[]
         {
             vmFactory.Get<MainPackageManagerViewModel>(),

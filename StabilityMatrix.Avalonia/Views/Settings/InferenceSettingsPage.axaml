@@ -41,7 +41,11 @@
                          IsEnabled="{Binding UseRemoteInference}"
                          Watermark="http://127.0.0.1:18188" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="Connect from Inference or Image Lab after changing this setting. Disconnect first if already connected. For SSH, enter the local forwarded address. Images are saved on this Mac; models and extensions must be installed on the server." />
+                           Text="Connect from Inference or Image Lab after changing this setting. Disconnect first if already connected. For SSH, enter the local forwarded address. Images are saved on this Mac. Packages and Checkpoint Manager use the server library below while remote mode is enabled." />
+                <TextBlock Text="Server library management (SSH)" FontWeight="Medium"/>
+                <TextBox Text="{Binding RemoteSshHost}" Watermark="SSH host, e.g. servivor"/>
+                <TextBox Text="{Binding RemoteLibraryPath}" Watermark="Stability Matrix data directory on server"/>
+                <TextBox Text="{Binding RemoteComfyPath}" Watermark="Separate inference ComfyUI directory on server"/>
             </StackPanel>
 
             <!--  Prompt  -->

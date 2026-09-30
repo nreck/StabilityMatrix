@@ -1,0 +1,65 @@
+<controls:UserControlBase xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:controls="clr-namespace:StabilityMatrix.Avalonia.Controls" xmlns:vm="clr-namespace:StabilityMatrix.Avalonia.ViewModels"
+ xmlns:remote="clr-namespace:StabilityMatrix.Avalonia.Services" x:DataType="vm:RemoteLibraryViewModel"
+ x:Class="StabilityMatrix.Avalonia.Views.RemotePackagesView">
+ <Grid Margin="16" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="10">
+  <StackPanel Spacing="4">
+   <TextBlock FontSize="24" FontWeight="SemiBold" Text="Packages on server"/>
+   <TextBlock Text="{Binding ServerLabel}" TextWrapping="Wrap"/>
+   <TextBlock Text="{Binding FreeSpace}" Opacity="0.7"/>
+  </StackPanel>
+  <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="12">
+   <Button Content="Refresh server" Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}"/>
+   <TextBlock Grid.Column="1" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+  </Grid>
+  <Grid Grid.Row="2" RowDefinitions="*,Auto,Auto" RowSpacing="8">
+   <DataGrid MinHeight="130" ItemsSource="{Binding Packages}" SelectedItem="{Binding SelectedPackage}" IsReadOnly="True" AutoGenerateColumns="False">
+    <DataGrid.Columns>
+     <DataGridTextColumn x:DataType="remote:RemotePackage" Header="Package on server" Binding="{Binding Name}" Width="2*"/>
+     <DataGridTextColumn x:DataType="remote:RemotePackage" Header="State" Binding="{Binding Status}" Width="2*"/>
+     <DataGridTextColumn x:DataType="remote:RemotePackage" Header="Port" Binding="{Binding Port}" Width="70"/>
+    </DataGrid.Columns>
+   </DataGrid>
+   <WrapPanel Grid.Row="1" IsEnabled="{Binding !IsBusy}">
+    <Button Margin="0,0,8,0" Content="Launch" Command="{Binding StartPackageCommand}"/>
+    <Button Margin="0,0,8,0" Content="Stop" Command="{Binding StopPackageCommand}"/>
+    <Button Margin="0,0,8,0" Content="Update" Command="{Binding UpdatePackageCommand}"/>
+    <Button Margin="0,0,8,0" Content="Open Web UI" Command="{Binding OpenWebUiCommand}"/>
+    <Button Margin="0,0,8,0" Content="Use for Inference" Command="{Binding UseForInferenceCommand}"/>
+    <Button Margin="0,0,8,0" Content="Package logs" Command="{Binding PackageLogsCommand}"/>
+   </WrapPanel>
+   <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+    <TextBlock Text="Server port" VerticalAlignment="Center"/>
+    <TextBox Width="85" Text="{Binding LaunchPort}"/>
+    <TextBlock Text="GPU" VerticalAlignment="Center"/>
+    <TextBox Width="100" Watermark="Default" Text="{Binding Gpu}"/>
+    <TextBox Width="230" Watermark="Extra launch arguments" Text="{Binding LaunchArguments}"/>
+   </StackPanel>
+  </Grid>
+  <Expander Grid.Row="3" Header="Install a package on the server" HorizontalAlignment="Stretch">
+   <StackPanel Spacing="8" IsEnabled="{Binding !IsBusy}">
+    <TextBlock Text="Choose a package and a new folder name. Installation runs on the server; follow progress under Server jobs." TextWrapping="Wrap"/>
+    <ComboBox ItemsSource="{Binding Catalog}" SelectedItem="{Binding SelectedCatalog}" HorizontalAlignment="Stretch">
+     <ComboBox.ItemTemplate><DataTemplate x:DataType="remote:RemoteChoice"><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+    </ComboBox>
+    <TextBox Text="{Binding InstallName}" Watermark="New package folder name"/>
+    <Button Content="Install on server" Command="{Binding InstallPackageCommand}"/>
+   </StackPanel>
+  </Expander>
+  <Expander Grid.Row="4" Header="Server jobs and logs" IsExpanded="True" MaxHeight="210" HorizontalAlignment="Stretch">
+   <Grid RowDefinitions="Auto,*" RowSpacing="6">
+    <StackPanel Orientation="Horizontal" Spacing="8">
+     <Button Content="View selected job log" Command="{Binding JobLogsCommand}"/>
+     <Button Content="Cancel selected job" Command="{Binding CancelJobCommand}"/>
+    </StackPanel>
+    <DataGrid Grid.Row="1" MinHeight="90" MaxHeight="150" ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob}" IsReadOnly="True" AutoGenerateColumns="False">
+     <DataGrid.Columns>
+      <DataGridTextColumn x:DataType="remote:RemoteJob" Header="Job" Binding="{Binding Description}" Width="2*"/>
+      <DataGridTextColumn x:DataType="remote:RemoteJob" Header="Status" Binding="{Binding Status}" Width="110"/>
+      <DataGridTextColumn x:DataType="remote:RemoteJob" Header="Result" Binding="{Binding Message}" Width="3*"/>
+     </DataGrid.Columns>
+    </DataGrid>
+   </Grid>
+  </Expander>
+ </Grid>
+</controls:UserControlBase>

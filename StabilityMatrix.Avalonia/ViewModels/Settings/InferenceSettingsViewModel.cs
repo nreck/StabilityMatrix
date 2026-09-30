@@ -44,6 +44,10 @@ public partial class InferenceSettingsViewModel : PageViewModelBase
     public override IconSource IconSource =>
         new SymbolIconSource { Symbol = Symbol.Settings, IconVariant = IconVariant.Filled };
 
+    [ObservableProperty] private string remoteSshHost = "servivor";
+    [ObservableProperty] private string remoteLibraryPath = "~/Applications/StabilityMatrix/Data";
+    [ObservableProperty] private string remoteComfyPath = "~/ComfyUI";
+
     [ObservableProperty]
     private bool useRemoteInference;
 
@@ -119,6 +123,9 @@ public partial class InferenceSettingsViewModel : PageViewModelBase
     )
     {
         this.settingsManager = settingsManager;
+        settingsManager.RelayPropertyFor(this, vm => vm.RemoteSshHost, s => s.RemoteSshHost, true);
+        settingsManager.RelayPropertyFor(this, vm => vm.RemoteLibraryPath, s => s.RemoteLibraryPath, true);
+        settingsManager.RelayPropertyFor(this, vm => vm.RemoteComfyPath, s => s.RemoteComfyPath, true);
         settingsManager.RelayPropertyFor(
             this, vm => vm.UseRemoteInference, settings => settings.UseRemoteInference, true
         );

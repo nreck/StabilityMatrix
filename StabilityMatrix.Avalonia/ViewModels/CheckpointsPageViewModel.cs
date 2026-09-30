@@ -49,6 +49,7 @@ namespace StabilityMatrix.Avalonia.ViewModels;
 [View(typeof(CheckpointsPage))]
 [RegisterSingleton<CheckpointsPageViewModel>]
 public partial class CheckpointsPageViewModel(
+    RemoteLibraryViewModel remoteLibrary,
     ILogger<CheckpointsPageViewModel> logger,
     ISettingsManager settingsManager,
     IModelIndexService modelIndexService,
@@ -64,6 +65,8 @@ public partial class CheckpointsPageViewModel(
     INavigationService<MainWindowViewModel> navigationService
 ) : PageViewModelBase
 {
+    public RemoteLibraryViewModel RemoteLibrary { get; } = remoteLibrary;
+
     public override string Title => Resources.Label_CheckpointManager;
 
     public override IconSource IconSource =>
@@ -495,7 +498,7 @@ public partial class CheckpointsPageViewModel(
 
     public override async Task OnLoadedAsync()
     {
-        if (Design.IsDesignMode)
+        if (Design.IsDesignMode || RemoteLibrary.IsEnabled)
             return;
 
         var baseModelTypes = await baseModelTypeService.GetBaseModelTypes(includeAllOption: false);

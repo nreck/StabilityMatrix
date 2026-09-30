@@ -956,6 +956,10 @@ public partial class InferenceClientManager : ObservableObject, IInferenceClient
     }
 
     /// <inheritdoc />
+    public Task ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default) =>
+        ConnectAsyncImpl(ComfyEndpoint.Parse(endpoint.ToString()), cancellationToken: cancellationToken);
+
+    /// <inheritdoc />
     public virtual async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
         var endpoint = settingsManager.Settings.UseRemoteInference

@@ -1,0 +1,65 @@
+<controls:UserControlBase xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:controls="clr-namespace:StabilityMatrix.Avalonia.Controls" xmlns:vm="clr-namespace:StabilityMatrix.Avalonia.ViewModels"
+ xmlns:remote="clr-namespace:StabilityMatrix.Avalonia.Services" x:DataType="vm:RemoteLibraryViewModel"
+ x:Class="StabilityMatrix.Avalonia.Views.RemoteModelsView">
+ <Grid Margin="16" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="10">
+  <StackPanel Spacing="4">
+   <TextBlock FontSize="24" FontWeight="SemiBold" Text="Checkpoint Manager · Server"/>
+   <TextBlock Text="{Binding ServerLabel}" TextWrapping="Wrap"/>
+   <TextBlock Text="{Binding FreeSpace}" Opacity="0.7"/>
+  </StackPanel>
+  <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="12">
+   <Button Content="Refresh server" Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}"/>
+   <TextBlock Grid.Column="1" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+  </Grid>
+  <Grid Grid.Row="2" RowDefinitions="Auto,*,Auto" RowSpacing="8">
+   <TextBox Text="{Binding Search}" Watermark="Search server models"/>
+   <DataGrid Grid.Row="1" MinHeight="150" ItemsSource="{Binding FilteredModels}" SelectedItem="{Binding SelectedModel}" IsReadOnly="True" AutoGenerateColumns="False">
+    <DataGrid.Columns>
+     <DataGridTextColumn x:DataType="remote:RemoteModel" Header="Model" Binding="{Binding Name}" Width="3*"/>
+     <DataGridTextColumn x:DataType="remote:RemoteModel" Header="Category" Binding="{Binding Category}" Width="*"/>
+     <DataGridTextColumn x:DataType="remote:RemoteModel" Header="Location" Binding="{Binding Location}" Width="*"/>
+     <DataGridTextColumn x:DataType="remote:RemoteModel" Header="Size" Binding="{Binding SizeDisplay}" Width="85"/>
+    </DataGrid.Columns>
+   </DataGrid>
+   <WrapPanel Grid.Row="2" IsEnabled="{Binding !IsBusy}">
+    <Button Margin="0,0,8,0" Content="Rename / move" Command="{Binding MoveModelCommand}"/>
+    <Button Margin="0,0,8,0" Content="Move to trash" Command="{Binding TrashModelCommand}"/>
+    <Button Content="Restore last trashed model" Command="{Binding RestoreModelCommand}"/>
+   </WrapPanel>
+  </Grid>
+  <Expander Grid.Row="3" Header="Download or upload a model to the server" HorizontalAlignment="Stretch">
+   <StackPanel Spacing="8">
+    <ComboBox ItemsSource="{Binding Roots}" SelectedItem="{Binding SelectedRoot}" HorizontalAlignment="Stretch">
+     <ComboBox.ItemTemplate><DataTemplate x:DataType="remote:RemoteChoice"><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+    </ComboBox>
+    <TextBox Text="{Binding ModelDestination}" Watermark="Destination, e.g. StableDiffusion/model.safetensors"/>
+    <TextBox Text="{Binding ModelUrl}" Watermark="Direct model download URL (Hugging Face, CivitAI, etc.)"/>
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+     <TextBox Text="{Binding ModelToken}" PasswordChar="●" Watermark="Optional download access token"/>
+     <TextBox Grid.Column="1" Text="{Binding ModelSha256}" Watermark="Optional expected SHA-256"/>
+    </Grid>
+    <WrapPanel>
+     <Button Margin="0,0,8,0" Content="Download on server" Command="{Binding DownloadModelCommand}" IsEnabled="{Binding !IsBusy}"/>
+     <Button Margin="0,0,8,0" Content="Upload from Mac…" Command="{Binding UploadModelCommand}" IsEnabled="{Binding !IsBusy}"/>
+     <Button Content="Cancel upload" Command="{Binding UploadModelCancelCommand}"/>
+    </WrapPanel>
+   </StackPanel>
+  </Expander>
+  <Expander Grid.Row="4" Header="Server jobs and logs" IsExpanded="True" MaxHeight="210" HorizontalAlignment="Stretch">
+   <Grid RowDefinitions="Auto,*" RowSpacing="6">
+    <StackPanel Orientation="Horizontal" Spacing="8">
+     <Button Content="View selected job log" Command="{Binding JobLogsCommand}"/>
+     <Button Content="Cancel selected job" Command="{Binding CancelJobCommand}"/>
+    </StackPanel>
+    <DataGrid Grid.Row="1" MinHeight="90" MaxHeight="150" ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob}" IsReadOnly="True" AutoGenerateColumns="False">
+     <DataGrid.Columns>
+      <DataGridTextColumn x:DataType="remote:RemoteJob" Header="Job" Binding="{Binding Description}" Width="2*"/>
+      <DataGridTextColumn x:DataType="remote:RemoteJob" Header="Status" Binding="{Binding Status}" Width="110"/>
+      <DataGridTextColumn x:DataType="remote:RemoteJob" Header="Result" Binding="{Binding Message}" Width="3*"/>
+     </DataGrid.Columns>
+    </DataGrid>
+   </Grid>
+  </Expander>
+ </Grid>
+</controls:UserControlBase>
