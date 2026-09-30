@@ -34,6 +34,16 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="8,16" Spacing="8">
 
+            <StackPanel Margin="8,0,8,12" Spacing="8">
+                <TextBlock FontWeight="Medium" Text="Remote generation" />
+                <ToggleSwitch Content="Use a remote ComfyUI server" IsChecked="{Binding UseRemoteInference}" />
+                <TextBox Text="{Binding RemoteInferenceUrl}"
+                         IsEnabled="{Binding UseRemoteInference}"
+                         Watermark="http://127.0.0.1:18188" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="Connect from Inference or Image Lab after changing this setting. Disconnect first if already connected. For SSH, enter the local forwarded address. Images are saved on this Mac; models and extensions must be installed on the server." />
+            </StackPanel>
+
             <!--  Prompt  -->
             <sg:SpacedGrid RowDefinitions="Auto,*" RowSpacing="4">
                 <TextBlock

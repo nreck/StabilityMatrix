@@ -392,6 +392,7 @@ public partial class InferenceClientManager : ObservableObject, IInferenceClient
             // open model dropdown while the list refreshes.
             var localModelsById = modelIndexService
                 .FindByModelType(SharedFolderType.StableDiffusion)
+                .Where(_ => Client.LocalServerPath is not null)
                 .Select(HybridModelFile.FromLocal)
                 .GroupBy(m => m.GetId())
                 .ToDictionary(g => g.Key, g => g.First());
@@ -548,6 +549,7 @@ public partial class InferenceClientManager : ObservableObject, IInferenceClient
             // the package, so they're loadable via the GGUF clip loaders once installed.
             var localModels = modelIndexService
                 .FindByModelType(SharedFolderType.TextEncoders)
+                .Where(_ => Client.LocalServerPath is not null)
                 .Select(HybridModelFile.FromLocal)
                 .ToList();
 
@@ -563,6 +565,11 @@ public partial class InferenceClientManager : ObservableObject, IInferenceClient
             ];
 
             clipModelsSource.EditDiff(models, HybridModelFile.RemoteLocalComparer);
+        }
+
+        if (await Client.GetNodeOptionNamesAsync("VAELoader", "vae_name") is { } vaeNames)
+        {
+            vaeModelsSource.EditDiff(vaeNames.Select(HybridModelFile.FromRemote), HybridModelFile.RemoteLocalComparer);
         }
 
         // Get CLIP Vision model names from CLIPVisionLoader node
@@ -582,6 +589,30 @@ public partial class InferenceClientManager : ObservableObject, IInferenceClient
     /// </summary>
     protected void ResetSharedProperties()
     {
+        if (settingsManager.Settings.UseRemoteInference)
+        {
+            // A Mac's local/downloadable models are not available to a remote server.
+            // Keep an active server's lists stable until the refresh completes.
+            if (IsConnected)
+                return;
+
+            foreach (var source in new[]
+            {
+                modelsSource, vaeModelsSource, controlNetModelsSource, loraModelsSource,
+                promptExpansionModelsSource, ultralyticsModelsSource, samModelsSource,
+                unetModelsSource, clipModelsSource, clipVisionModelsSource,
+                downloadableControlNetModelsSource, downloadablePromptExpansionModelsSource,
+                downloadableUltralyticsModelsSource, downloadableSamModelsSource,
+                downloadableClipModelsSource, downloadableClipVisionModelsSource,
+            })
+            {
+                source.Clear();
+            }
+            modelUpscalersSource.Clear();
+            downloadableUpscalersSource.Clear();
+            return;
+        }
+
         // Load local models.
         // When connected, the checkpoint list is refreshed as a single combined (local + remote)
         // diff in LoadSharedPropertiesAsync, so skip the local-only reset here to avoid transiently
@@ -849,12 +880,14 @@ public partial class InferenceClientManager : ObservableObject, IInferenceClient
         if (IsConnected)
             return;
 
+        ResetSharedProperties();
         IsConnecting = true;
+        ComfyClient? tempClient = null;
         try
         {
             logger.LogDebug("Connecting to {@Uri}...", uri);
 
-            var tempClient = new ComfyClient(apiFactory, uri);
+            tempClient = new ComfyClient(apiFactory, uri);
 
             await tempClient.ConnectAsync(cancellationToken);
             logger.LogDebug("Connected to {@Uri}", uri);
@@ -875,7 +908,9 @@ public partial class InferenceClientManager : ObservableObject, IInferenceClient
         }
         catch (Exception)
         {
+            tempClient?.Dispose();
             Client = null;
+            ResetSharedProperties();
             throw;
         }
         finally
@@ -921,9 +956,12 @@ public partial class InferenceClientManager : ObservableObject, IInferenceClient
     }
 
     /// <inheritdoc />
-    public virtual Task ConnectAsync(CancellationToken cancellationToken = default)
+    public virtual async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
-        return ConnectAsyncImpl(new Uri("http://127.0.0.1:8188"), cancellationToken: cancellationToken);
+        var endpoint = settingsManager.Settings.UseRemoteInference
+            ? ComfyEndpoint.Parse(settingsManager.Settings.RemoteInferenceUrl)
+            : new Uri("http://127.0.0.1:8188");
+        await ConnectAsyncImpl(endpoint, cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
@@ -934,6 +972,12 @@ public partial class InferenceClientManager : ObservableObject, IInferenceClient
     {
         if (IsConnected)
             return;
+
+        if (settingsManager.Settings.UseRemoteInference)
+        {
+            await ConnectAsync(cancellationToken);
+            return;
+        }
 
         if (packagePair.BasePackage is not ComfyUI comfyPackage)
         {
@@ -975,6 +1019,7 @@ public partial class InferenceClientManager : ObservableObject, IInferenceClient
             return;
 
         await Client.CloseAsync();
+        Client.Dispose();
         Client = null;
         ResetSharedProperties();
     }

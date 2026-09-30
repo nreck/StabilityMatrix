@@ -45,6 +45,12 @@ public partial class InferenceSettingsViewModel : PageViewModelBase
         new SymbolIconSource { Symbol = Symbol.Settings, IconVariant = IconVariant.Filled };
 
     [ObservableProperty]
+    private bool useRemoteInference;
+
+    [ObservableProperty]
+    private string remoteInferenceUrl = "http://127.0.0.1:18188";
+
+    [ObservableProperty]
     private bool isPromptCompletionEnabled = true;
 
     [ObservableProperty]
@@ -113,6 +119,12 @@ public partial class InferenceSettingsViewModel : PageViewModelBase
     )
     {
         this.settingsManager = settingsManager;
+        settingsManager.RelayPropertyFor(
+            this, vm => vm.UseRemoteInference, settings => settings.UseRemoteInference, true
+        );
+        settingsManager.RelayPropertyFor(
+            this, vm => vm.RemoteInferenceUrl, settings => settings.RemoteInferenceUrl, true
+        );
         this.notificationService = notificationService;
         this.completionProvider = completionProvider;
 

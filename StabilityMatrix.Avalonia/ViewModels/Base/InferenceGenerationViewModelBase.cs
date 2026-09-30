@@ -286,8 +286,6 @@ public abstract partial class InferenceGenerationViewModelBase
             throw new InvalidOperationException("Project is null");
         if (args.OutputNodeNames.Count == 0)
             throw new InvalidOperationException("OutputNodeNames is empty");
-        if (client.OutputImagesDir is null)
-            throw new InvalidOperationException("OutputImagesDir is null");
 
         // Only check extensions for first batch index
         if (args.BatchIndex == 0)
@@ -758,8 +756,14 @@ public abstract partial class InferenceGenerationViewModelBase
             return true;
         }
 
+        // Remote servers validate node availability when the prompt is submitted.
+        // Extension installation/version checks require a local package directory.
+        if (ClientManager.Client?.LocalServerPackage is not { } localPackagePair)
+        {
+            return true;
+        }
+
         // Get installed extensions
-        var localPackagePair = ClientManager.Client?.LocalServerPackage.Unwrap()!;
         var manager = localPackagePair.BasePackage.ExtensionManager.Unwrap();
 
         var localExtensions = (

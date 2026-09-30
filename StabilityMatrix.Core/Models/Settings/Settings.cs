@@ -11,6 +11,9 @@ namespace StabilityMatrix.Core.Models.Settings;
 
 public class Settings
 {
+    public bool UseRemoteInference { get; set; }
+    public string RemoteInferenceUrl { get; set; } = "http://127.0.0.1:18188";
+
     public int? Version { get; set; } = 1;
     public bool FirstLaunchSetupComplete { get; set; }
     public string? Theme { get; set; } = "Dark";

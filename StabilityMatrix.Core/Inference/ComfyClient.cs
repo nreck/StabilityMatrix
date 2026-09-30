@@ -107,12 +107,7 @@ public class ComfyClient : InferenceClientBase
         BaseAddress = baseAddress;
 
         // Setup websocket client
-        var wsUri = new UriBuilder(baseAddress)
-        {
-            Scheme = "ws",
-            Path = "/ws",
-            Query = $"clientId={ClientId}"
-        }.Uri;
+        var wsUri = ComfyEndpoint.GetWebSocketUri(baseAddress, ClientId);
 
         webSocketClient = new WebsocketClient(wsUri)
         {
@@ -381,7 +376,21 @@ public class ComfyClient : InferenceClientBase
         // Currently there is no api, so we do a local file copy
         if (LocalServerPath is null)
         {
-            throw new InvalidOperationException("LocalServerPath is not set");
+            // ComfyUI exposes an upload API for input images, but not model/config files.
+            var relativePath = destinationRelativePath.Replace('\\', '/');
+            var parts = relativePath.Split('/');
+            if (parts.Length < 2 || parts[0] != "input" || parts.Any(p => p is ".." or "." or ""))
+            {
+                throw new NotSupportedException(
+                    $"Remote file transfer to '{destinationRelativePath}' is not supported. Install model/config files on the ComfyUI server."
+                );
+            }
+            await using var stream = File.OpenRead(sourcePath);
+            await comfyApi.PostUploadImage(
+                new StreamPart(stream, parts[^1]), "true", "input",
+                string.Join("/", parts.Skip(1).SkipLast(1)), cancellationToken
+            ).ConfigureAwait(false);
+            return;
         }
 
         var sourceFile = new FilePath(sourcePath);

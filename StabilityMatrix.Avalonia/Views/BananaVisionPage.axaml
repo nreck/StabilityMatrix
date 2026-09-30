@@ -319,7 +319,7 @@
                             <Button.IsVisible>
                                 <MultiBinding Converter="{x:Static BoolConverters.And}">
                                     <Binding Path="RequiresLocalBackend" />
-                                    <Binding Path="IsComfyRunning" />
+                                    <Binding Path="CanConnectToBackend" />
                                     <Binding Path="ClientManager.CanUserConnect" />
                                     <Binding Path="!IsWaitingForConnection" />
                                 </MultiBinding>
@@ -339,7 +339,7 @@
                                 <MultiBinding Converter="{x:Static BoolConverters.And}">
                                     <Binding Path="RequiresLocalBackend" />
                                     <Binding Path="ClientManager.CanUserConnect" />
-                                    <Binding Path="!IsComfyRunning" />
+                                    <Binding Path="!CanConnectToBackend" />
                                     <Binding Path="!IsWaitingForConnection" />
                                 </MultiBinding>
                             </Button.IsVisible>

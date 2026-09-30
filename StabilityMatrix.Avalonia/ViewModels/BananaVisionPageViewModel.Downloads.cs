@@ -54,6 +54,9 @@ public partial class BananaVisionPageViewModel
     /// </summary>
     private async Task CheckAndShowMissingModelsDialogAsync()
     {
+        if (UseRemoteInference)
+            return;
+
         // Don't show if we've already shown it this session
         if (hasShownMissingModelsDialog)
             return;
@@ -75,6 +78,12 @@ public partial class BananaVisionPageViewModel
     [RelayCommand]
     private async Task ShowMissingModelsDialogAsync()
     {
+        if (UseRemoteInference)
+        {
+            notificationService.Show("Remote models", "Install the missing models on your ComfyUI server, then reconnect.", NotificationType.Information);
+            return;
+        }
+
         if (!ClientManager.IsConnected)
         {
             notificationService.Show(

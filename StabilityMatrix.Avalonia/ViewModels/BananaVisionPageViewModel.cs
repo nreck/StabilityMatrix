@@ -433,7 +433,7 @@ public partial class BananaVisionPageViewModel : PageViewModelBase
     public partial int CustomHeight { get; set; } = 1024;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsComfyRunning))]
+    [NotifyPropertyChangedFor(nameof(IsComfyRunning), nameof(CanConnectToBackend))]
     public partial PackagePair? RunningPackage { get; set; }
 
     [ObservableProperty]
@@ -467,7 +467,12 @@ public partial class BananaVisionPageViewModel : PageViewModelBase
         UpdateProviderStatus();
     }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConnectToBackend))]
+    private bool useRemoteInference;
+
     public bool IsComfyRunning => RunningPackage?.BasePackage is ComfyUI;
+    public bool CanConnectToBackend => UseRemoteInference || IsComfyRunning;
 
     private string? lastMessageText;
     private List<string>? lastMessageImagePaths;
@@ -517,9 +522,13 @@ public partial class BananaVisionPageViewModel : PageViewModelBase
         IServiceManager<ViewModelBase> vmFactory,
         IModelIndexService modelIndexService,
         INavigationService<MainWindowViewModel> navigationService,
-        INavigationService<SettingsViewModel> settingsNavigationService
+        INavigationService<SettingsViewModel> settingsNavigationService,
+        ISettingsManager settingsManager
     )
     {
+        settingsManager.RelayPropertyFor(
+            this, vm => vm.UseRemoteInference, settings => settings.UseRemoteInference, true
+        );
         this.logger = logger;
         this.chatService = chatService;
         this.secretsManager = secretsManager;
@@ -577,6 +586,9 @@ public partial class BananaVisionPageViewModel : PageViewModelBase
         // Subscribe to running package changes
         runningPackageService.RunningPackages.CollectionChanged += (s, e) =>
         {
+            if (UseRemoteInference)
+                return;
+
             // ComfyZluda inherits from ComfyUI, so this check covers both
             var comfyPackage = runningPackageService
                 .RunningPackages.FirstOrDefault(p => p.Value.RunningPackage.BasePackage is ComfyUI)
@@ -951,7 +963,7 @@ public partial class BananaVisionPageViewModel : PageViewModelBase
         await dialog.ShowAsync();
 
         // After dialog closes, check if we should connect
-        if (IsComfyRunning && ClientManager.CanUserConnect)
+        if (CanConnectToBackend && ClientManager.CanUserConnect)
         {
             await ConnectAsync();
         }
@@ -2342,7 +2354,7 @@ public partial class BananaVisionPageViewModel : PageViewModelBase
             // This is a local provider - check ComfyUI and model status
 
             // Check if ComfyUI is running
-            if (!IsComfyRunning)
+            if (!CanConnectToBackend)
             {
                 ProviderStatusMessage = "⚠️ ComfyUI is not running. Click Launch to start.";
                 HasMissingModels = false;

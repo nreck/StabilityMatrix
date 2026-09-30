@@ -91,10 +91,15 @@ public partial class InferenceViewModel : PageViewModelBase, IAsyncDisposable
     private bool isWaitingForConnection;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsComfyRunning))]
+    [NotifyPropertyChangedFor(nameof(IsComfyRunning), nameof(CanConnectToBackend))]
     private PackagePair? runningPackage;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConnectToBackend))]
+    private bool useRemoteInference;
+
     public bool IsComfyRunning => RunningPackage?.BasePackage is ComfyUI;
+    public bool CanConnectToBackend => UseRemoteInference || IsComfyRunning;
 
     private IDisposable? onStartupComplete;
 
@@ -112,6 +117,9 @@ public partial class InferenceViewModel : PageViewModelBase, IAsyncDisposable
         this.vmFactory = vmFactory;
         this.notificationService = notificationService;
         this.settingsManager = settingsManager;
+        settingsManager.RelayPropertyFor(
+            this, vm => vm.UseRemoteInference, settings => settings.UseRemoteInference, true
+        );
         this.modelIndexService = modelIndexService;
         this.liteDbContext = liteDbContext;
         this.runningPackageService = runningPackageService;
@@ -163,6 +171,9 @@ public partial class InferenceViewModel : PageViewModelBase, IAsyncDisposable
     /// </summary>
     private void RunningPackagesOnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (UseRemoteInference)
+            return;
+
         if (
             e.NewItems?.OfType<KeyValuePair<Guid, RunningPackageViewModel>>().Select(x => x.Value)
             is not { } newItems
@@ -481,10 +492,12 @@ public partial class InferenceViewModel : PageViewModelBase, IAsyncDisposable
             return;
         }
 
-        if (RunningPackage is not null)
+        if (UseRemoteInference || RunningPackage is not null)
         {
             var result = await notificationService.TryAsync(
-                ClientManager.ConnectAsync(RunningPackage, cancellationToken),
+                UseRemoteInference
+                    ? ClientManager.ConnectAsync(cancellationToken)
+                    : ClientManager.ConnectAsync(RunningPackage!, cancellationToken),
                 "Could not connect to backend"
             );
 

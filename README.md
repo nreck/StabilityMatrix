@@ -1,3 +1,7 @@
+> **Remote generation fork:** Keep the Mac app and generate on a remote ComfyUI server over SSH.
+> See [setup, build, and verification instructions](docs/remote-inference.md).
+> Packages and model installation remain local; remote models are managed on the server.
+
 # Stability Matrix
 
 [![Build](https://github.com/LykosAI/StabilityMatrix/actions/workflows/build.yml/badge.svg)](https://github.com/LykosAI/StabilityMatrix/actions/workflows/build.yml)
